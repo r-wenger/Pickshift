@@ -74,18 +74,18 @@ Replace `<env_name>` with the name of the environment specified in `environment.
 
 ## Configuration File
 
-The script requires a configuration file in INI format for its parameters. Here's a sample configuration file:
+The script requires a configuration file (config.conf) for its parameters. Here's a sample configuration file:
 
 ```ini
 [DEFAULT]
 GCP_txt = path/to/GCP.txt
 extent_txt = path/to/extent.txt
 poly_A_multi_txt = path/to/poly_A_multi.txt
-buffer_txt = 0.5
-crs_txt = 4326
-runs_txt = 1000
-resol_x_txt = 1.0
-resol_y_txt = 1.0
+buffer_txt = 10
+crs_txt = 2154
+runs_txt = 100
+resol_x_txt = 4
+resol_y_txt = 4
 outputf_txt = path/to/output/folder/
 ```
 
