@@ -1,4 +1,4 @@
-name: envpick
+name: envpickshift
 channels:
   - conda-forge
   - defaults
@@ -36,6 +36,7 @@ dependencies:
   - click=8.1.7
   - click-plugins=1.1.1
   - cligj=0.7.2
+  - colorama=0.4.6
   - contourpy=1.1.0
   - curl=8.2.1
   - cycler=0.11.0
@@ -87,7 +88,6 @@ dependencies:
   - libexpat=2.5.0
   - libffi=3.4.4
   - libgdal=3.7.1
-  - libgfortran=5.0.0
   - libgfortran5=12.3.0
   - libglib=2.76.4
   - libiconv=1.17
@@ -165,7 +165,7 @@ dependencies:
   - threadpoolctl=3.2.0
   - tiledb=2.13.2
   - tk=8.6.12
-  - tqdm
+  - tqdm=4.66.1
   - typing-extensions=4.7.1
   - typing_extensions=4.7.1
   - tzcode=2023c

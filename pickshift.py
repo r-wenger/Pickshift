@@ -20,6 +20,7 @@ import csv
 import random
 from random import *
 from tqdm import tqdm
+import math
 
 import argparse
 import configparser
@@ -30,25 +31,29 @@ from time import monotonic
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+
 def validate_config(config):
     # Check if files exist
-    files_to_check = ['GCP_txt', 'extent_txt', 'poly_A_multi_txt']
+    files_to_check = ['GCP', 'extent', 'polygons']
     for file_key in files_to_check:
         if not os.path.exists(config.get('DEFAULT', file_key)):
             raise FileNotFoundError(f"The file {config.get('DEFAULT', file_key)} does not exist!")
 
     # Check if the output folder exists. If not, try to create it
-    output_folder = config.get('DEFAULT', 'outputf_txt')
+    output_folder = config.get('DEFAULT', 'outputf')
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
         print(f"Created output folder at {output_folder}")
 
     try:
-        float(config.get('DEFAULT', 'buffer_txt'))
-        int(config.get('DEFAULT', 'crs_txt'))
-        int(config.get('DEFAULT', 'runs_txt'))
-        float(config.get('DEFAULT', 'resol_x_txt'))
-        float(config.get('DEFAULT', 'resol_y_txt'))
+        float(config.get('DEFAULT', 'buffer'))
+        int(config.get('DEFAULT', 'crs'))
+        int(config.get('DEFAULT', 'runs'))
+        float(config.get('DEFAULT', 'resol_x'))
+        float(config.get('DEFAULT', 'resol_y'))
+        str(config.get('DEFAULT', 'outputCSV_point_sim'))
+        str(config.get('DEFAULT', 'outputCSV_poly_sim'))
+        str(config.get('DEFAULT', 'outputSVE'))
     except ValueError:
         raise ValueError("One of the parameters in the config file is not correctly formatted.")
 
@@ -62,15 +67,19 @@ def pickshift_main(config_file):
   validate_config(config)
   
   # Extract values from the config file
-  GCP_txt = config.get('DEFAULT', 'GCP_txt')
-  extent_txt = config.get('DEFAULT', 'extent_txt')
-  poly_A_multi_txt = config.get('DEFAULT', 'poly_A_multi_txt')
-  buffer_txt = config.get('DEFAULT', 'buffer_txt')
-  crs_txt = config.get('DEFAULT', 'crs_txt')
-  runs_txt = config.get('DEFAULT', 'runs_txt')
-  resol_x_txt = config.get('DEFAULT', 'resol_x_txt')
-  resol_y_txt = config.get('DEFAULT', 'resol_y_txt')
-  outputf_txt = config.get('DEFAULT', 'outputf_txt')
+  GCP_txt = config.get('DEFAULT', 'GCP')
+  extent_txt = config.get('DEFAULT', 'extent')
+  poly_A_multi_txt = config.get('DEFAULT', 'polygons')
+  buffer_txt = config.get('DEFAULT', 'buffer')
+  crs_txt = config.get('DEFAULT', 'crs')
+  runs_txt = config.get('DEFAULT', 'runs')
+  resol_x_txt = config.get('DEFAULT', 'resol_x')
+  resol_y_txt = config.get('DEFAULT', 'resol_y')
+  outputf_txt = config.get('DEFAULT', 'outputf')
+  outputCSV_point_sim = config.get('DEFAULT', 'outputCSV_point_sim')
+  outputCSV_poly_sim = config.get('DEFAULT', 'outputCSV_poly_sim')
+  outputIDW = config.get('DEFAULT', 'outputSVE')
+  outputGCPb = config.get('DEFAULT', 'outputGCPb')
 
   # In[ ]:
   print("[INFO] Loading spatial and tabular data...")
@@ -83,15 +92,32 @@ def pickshift_main(config_file):
   resol_x=float(resol_x_txt)
   resol_y=float(resol_y_txt)
 
+  if outputCSV_point_sim == 'True':
+    outputCSV_point_sim = True
+  else:
+    outputCSV_point_sim = False
 
-  #démarrage du chrono
+  if outputCSV_poly_sim == 'True':
+    outputCSV_poly_sim = True
+  else:
+    outputCSV_poly_sim = False
+
+  if outputIDW == 'True':
+    outputIDW = True
+  else:
+    outputIDW = False
+
+  if outputGCPb == 'True':
+    outputGCPb = True
+  else:
+    outputGCPb = False
+
+  #Starting time
   start = monotonic() 
 
 
   # In[ ]:
 
-
-  #identification et stockage des variables d'interets
   X_ref=GCP_df['Xref']
   Y_ref=GCP_df['Yref']
   X_ini=GCP_df['Xinit']
@@ -101,8 +127,8 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Calcule du biais
-  print("[INFO] Calculating biases...")
+  #Calculating Biases
+  print("[INFO] Calculating planimetric biases from GCP file...")
   GCP_biaisXY= abs(((X_ref-X_ini)**2 + (Y_ref-Y_ini)**2)**0.5)
   GCP_biaisX= abs(X_ref-X_ini)
   GCP_biaisY= abs(Y_ref-Y_ini)
@@ -114,37 +140,39 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Calcul le biais moyen et son écart type
+  #Calculating biases and standard deviation
   mean_XY = GCP_df['BiaisXY'].mean()
   std_XY= GCP_df['BiaisXY'].std()
   mean_X = GCP_df['BiaisX'].mean()
   std_X= GCP_df['BiaisX'].std()
   mean_Y = GCP_df['BiaisY'].mean()
   std_Y= GCP_df['BiaisY'].std()
-  print("[INFO] XY : biais moyen = ",mean_XY, "std =", std_XY )
-  print("[INFO] X  : biais moyen = ",mean_X, "std =", std_X )
-  print("[INFO] Y  : biais moyen = ",mean_Y, "std =", std_Y )
+  print("[INFO] XY : mean planimetric bias = ",mean_XY, "std =", std_XY )
+  print("[INFO] X  : mean planimetric bias = ",mean_X, "std =", std_X )
+  print("[INFO] Y  : mean planimetric bias = ",mean_Y, "std =", std_Y )
 
 
   # In[ ]:
 
 
-  #Conversion GCP en objet spatialisé (points)
+  #Converting GCP into spatial file
   point_gdf=gpd.GeoDataFrame(GCP_df,geometry=gpd.points_from_xy(GCP_df.Xinit,GCP_df.Yinit),crs=crs)
 
 
   # In[ ]:
 
 
-  #Export en shp du fichier de point
-  outfp = "GCP_biais.gpkg"
+  #Exporting in SHP point file
+  outfp = "GCP_bias.gpkg"
   point_gdf.to_file(os.path.join(outputf_txt, outfp),crs=crs)
+  if outputGCPb:
+    print("[OUTPUT] GCP_bias.gpkg file created.")
 
 
   # In[ ]:
 
 
-  #Création des paramètres de hauteur
+  #Creating width and height parameters
   xmin, ymin, xmax, ymax= emprise.total_bounds
   ht=abs((ymax-ymin)/resol_y)
   lg=abs((xmax-xmin)/resol_x)
@@ -153,29 +181,32 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Interpolation des biais
-  print("[INFO] Interpolating biases...")
-  idwXY = gdal.Grid(os.path.join(outputf_txt, "IDW_XY.tif"), os.path.join(outputf_txt, "GCP_biais.gpkg"),zfield="BiaisXY",
+  #Interpolate biase
+  print("[INFO] Interpolating biaises over the extent to produce SVE map...")
+  idwXY = gdal.Grid(os.path.join(outputf_txt, "IDW_XY.tif"), os.path.join(outputf_txt, "GCP_bias.gpkg"),zfield="BiaisXY",
                   algorithm = "invdist:power=2:smoothing=1.0",
                   outputBounds = [xmin,ymax,xmax,ymin],
                   width=lg,height=ht)
+  print("[OUTPUT] IDW_XY.tif file created.")
   idwXY=None
-  idwX = gdal.Grid(os.path.join(outputf_txt, "IDW_X.tif"), os.path.join(outputf_txt, "GCP_biais.gpkg"),zfield="BiaisX",
+  idwX = gdal.Grid(os.path.join(outputf_txt, "IDW_X.tif"), os.path.join(outputf_txt, "GCP_bias.gpkg"),zfield="BiaisX",
                   algorithm = "invdist:power=2:smoothing=1.0",
                   outputBounds = [xmin,ymax,xmax,ymin],              
                   width=lg,height=ht)
+  print("[OUTPUT] IDW_X.tif file created.")
   idwX=None
-  idwY = gdal.Grid(os.path.join(outputf_txt, "IDW_Y.tif"), os.path.join(outputf_txt, "GCP_biais.gpkg"),zfield="BiaisY",
+  idwY = gdal.Grid(os.path.join(outputf_txt, "IDW_Y.tif"), os.path.join(outputf_txt, "GCP_bias.gpkg"),zfield="BiaisY",
                   algorithm = "invdist:power=2:smoothing=1.0",
                   outputBounds = [xmin,ymax,xmax,ymin],
                   width=lg,height=ht)
+  print("[OUTPUT] IDW_Y.tif file created.")
   idwY=None
 
 
   # In[ ]:
 
 
-  #Export des rasters
+  #Export rasters
   ESV_data_XY = rasterio.open(os.path.join(outputf_txt, 'IDW_XY.tif')).read(1, masked=True)
   ESV_data_X = rasterio.open(os.path.join(outputf_txt, 'IDW_X.tif')).read(1, masked=True)
   ESV_data_Y = rasterio.open(os.path.join(outputf_txt, 'IDW_Y.tif')).read(1, masked=True)
@@ -187,8 +218,7 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Conversion en polygone
-  print("[INFO] Converting to polygons...")
+  #Converting to polygons
   poly_A= poly_A_multi.explode(index_parts=True)
   #poly_A= poly_A_multi.explode()
 
@@ -196,19 +226,12 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Extraction des sommets
-  '''col = poly_A.columns.tolist()[0:2]
-  nodes = gpd.GeoDataFrame(columns=col)
-  for index, row in poly_A.iterrows():
-      for pt in np.asarray(row['geometry'].exterior.coords): #avant c'était pas np.array mais list
-          _tmp = [{'id': int(row['id']),  'geometry':Point(pt) }]
-          _tmp_gdf = gpd.GeoDataFrame(_tmp, geometry='geometry')
-          nodes = pd.concat([nodes, _tmp_gdf],ignore_index=True)'''
-          #nodes=nodes.append({'id': int(row['id']),  'geometry':Point(pt) },ignore_index=True)
-
+  #Summit extraction
   col = poly_A.columns.tolist()[0:2]
   nodes = gpd.GeoDataFrame(columns=col)
-  for index, row in poly_A.iterrows():
+  total_rows = len(poly_A)
+
+  for index, row in tqdm(poly_A.iterrows(), total=poly_A.shape[0], desc="[INFO] Assignment of mean and std error to each polygon nodes according to the buffer size..."):
     for pt in np.asarray(row['geometry'].exterior.coords):
       nodes = pd.concat([nodes, gpd.GeoDataFrame({'id': [int(row['id'])], 'geometry': [Point(pt)]})], ignore_index=True)
 
@@ -217,8 +240,6 @@ def pickshift_main(config_file):
 
   # In[ ]:
 
-
-  #Suppression des doublons
   nodes.drop_duplicates(keep='first',inplace=True)
 
 
@@ -233,7 +254,7 @@ def pickshift_main(config_file):
   }
   #crs_fiona = crs.from_epsg(crs)
 
-  #Ajout d'un tampon + Export
+  #Calculating buffer + export
   pts_to_poly = nodes.copy()
   nodes = nodes.set_geometry('geometry')
   pts_to_poly["geometry"] = nodes.geometry.buffer(buffer)
@@ -249,7 +270,7 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Extraction de l'ESV en X + conversion
+  #Extracting ESV in X and convert it into grodataframe
   ESV_X = rs.zonal_stats(output_path,
                          ESV_data_X,
                          nodata=-999,
@@ -257,13 +278,6 @@ def pickshift_main(config_file):
                          geojson_out=True,
                          copy_properties=True,
                          stats="mean std")
-  #specify polygon shapefile vector
-  '''polygonLayer = QgsVectorLayer('output_path', 'zonepolygons', "ogr") 
-
-  # specify raster filename
-  rasterLayer = QgsRasterLayer(os.path.join(outputf_txt, 'IDW_X.tif'))
-  zoneStat = QgsZonalStatistics(polygonLayer, rasterLayer, 'pre-', 1, QgsZonalStatistics.Mean, QgsZonalStatistics.StDev)
-  zoneStat.calculateStatistics(None)'''
 
   #Conversion en geodataframe de X
   ESV_dfX = gpd.GeoDataFrame.from_features(ESV_X)
@@ -273,7 +287,7 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Extraction de l'ESV en Y + conversion en geodataframe
+  #Extracting ESV in Y and convert it into grodataframe
   ESV_Y = rs.zonal_stats(ESV_dfX,
                          ESV_data_Y,
                          nodata=-999,
@@ -288,7 +302,7 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Extraction de l'ESV en XY + conversion en geodataframe
+  #Extracting ESV in XY and convert it into grodataframe
   ESV_XY = rs.zonal_stats(ESV_dfY,
                          ESV_data_XY,
                          nodata=-999,
@@ -303,7 +317,7 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Conversion en point
+  #Converting into points
   ESV_XYXY=ESV_dfXY.copy()
   ESV_XYXY['geometry']=ESV_XYXY['geometry'].centroid
 
@@ -311,7 +325,7 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Simulation MonteCarlo
+  #Monte Carlo
   meanX = ESV_XYXY.Xmean
   stdX = ESV_XYXY.Xstd
   meanY = ESV_XYXY.Ymean
@@ -325,7 +339,8 @@ def pickshift_main(config_file):
   erreur = 0.5
   prob=[-1,1]
   res_dfi=[]
-  for i in tqdm(range(runs), desc="[INFO] Running Monte Carlo simulations"):
+
+  for i in tqdm(range(runs), desc="[INFO] Monte Carlo translations"):
     Xgaus= np.random.normal(meanX, stdX, num_reps)
     Ygaus= np.random.normal(meanY, stdY, num_reps)
     XYgaus=np.random.normal(meanXY, stdXY, num_reps)
@@ -345,19 +360,12 @@ def pickshift_main(config_file):
 
   results_df = pd.DataFrame.from_records(res_dfi, columns=['run', 'id','ESV_X','ESV_Y','ESV_XY','X','Y'])                                            
   gdf = gpd.GeoDataFrame(results_df, geometry=gpd.points_from_xy(results_df.X, results_df.Y), crs=crs)
-  #gdf
 
 
   # In[ ]:
 
 
-  #conversion en polygone + calcul surface de chacun
-
-  '''df2 = gdf.groupby(['run','id']).agg(
-       geometry = pd.NamedAgg(column='geometry', aggfunc = lambda x: Polygon(x.values))
-      ).reset_index()'''
-
-  print("[INFO] Converting points to polygons...")
+  #Convert into polygons and surface calculation
   def aggregate_to_polygon(group):
     return Polygon(group['geometry'].values)
 
@@ -367,18 +375,16 @@ def pickshift_main(config_file):
   df2['id'] = pd.to_numeric(df2['id'])
   df2.sort_values(by=['id'], ascending=True,
                             inplace=True, ignore_index=True)
-  #df2.set_geometry('geometry', inplace=True)
+
   geodf = gpd.GeoDataFrame(df2, geometry='geometry')
   geodf['Area']=geodf.area/10000
 
 
   # In[ ]:
 
-
-  #Calcul 
   grouppoly=geodf.groupby(["id"])[["Area"]].describe()
   grouppoly.columns = grouppoly.columns.droplevel(0)
-  for n in tqdm(range(len(grouppoly)), desc="[INFO] Calculating uncertainties"):
+  for n in tqdm(range(len(grouppoly)), desc="[INFO] Calculating surface uncertainties for each polygon"):
     grouppoly['initial area']=list(poly_A.area/10000)
     grouppoly['total uncertainty']=((0.5*(grouppoly['max']-grouppoly['min']))/grouppoly['mean'])*100
     q2=np.asarray(geodf.groupby(["id"])[["Area"]].quantile(0.025))
@@ -388,11 +394,12 @@ def pickshift_main(config_file):
   #grouppoly
 
   end = monotonic() 
-  print("[INFO] Running time : ", end-start, "secondes")
+  print("[INFO] Running time : ", str(round(end-start, 2)), "seconds")
 
   #Jointure et export
   poly_MC = poly_A_multi.merge(grouppoly, on='id')
   poly_MC.to_file(os.path.join(outputf_txt, "poly_MC.gpkg"), driver="GPKG")
+  print("[OUTPUT] poly_MC.gpkg file created.")
 
   # Define the paths of the files
   file1 = os.path.join(outputf_txt, 'poly_sim_MC.csv')
@@ -403,12 +410,28 @@ def pickshift_main(config_file):
     if os.path.exists(file):
       os.remove(file)
 
+  #remove geometry column
+  if outputCSV_poly_sim is True:
+    geodf.set_geometry('geometry', inplace=True)
+    #geodf['geometry'] = geodf['geometry'].apply(lambda x: x.wkt)
+    geodf['geometry'] = geodf['geometry'].apply(lambda geom: geom if geom.is_valid else None)
+    geodf.to_csv(os.path.join(outputf_txt, 'poly_sim_MC.csv'), index=False)
+    print("[OUTPUT] poly_sim_MC.csv file created.")
 
-  geodf.set_geometry('geometry', inplace=True)
-  geodf['geometry'] = geodf['geometry'].apply(lambda x: x.wkt)
+  if outputCSV_point_sim is True:
+    gdf['geometry'] = gdf['geometry'].apply(lambda x: x.wkt if x is not None else None)
+    gdf = gdf.drop(columns=['geometry'])
+    gdf.to_csv(os.path.join(outputf_txt, 'point_sim_MC.csv'), index=False)
+    print("[OUTPUT] point_sim_MC.csv file created.")
 
- #geodf.to_file(os.path.join(outputf_txt, 'poly_sim_MC.csv'), driver='CSV', index=False)
-  #gdf.to_file(os.path.join(outputf_txt, 'point_sim_MC.csv'), driver='CSV', index=False)
+
+  if outputIDW is False:
+    os.remove(os.path.join(outputf_txt, 'IDW_XY.tif'))
+    os.remove(os.path.join(outputf_txt, 'IDW_X.tif'))
+    os.remove(os.path.join(outputf_txt, 'IDW_Y.tif'))
+
+  if outputGCPb is False:
+    os.remove(os.path.join(outputf_txt, outfp))
 
 
 if __name__ == "__main__":
