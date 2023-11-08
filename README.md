@@ -1,140 +1,120 @@
-# Pickshift
+## PickShift
 
-## Cite this Script
+### Cite this software
 
-If you use this script for academic research or as part of any scientific publication, we ask you to cite it. Below is a sample citation:
+If you use PickShift for academic research or as part of any scientific publication, we ask you to cite it. Below is a sample citation:
 
-**APA Style**
+### Overview
 
-```text
-Author1, Author2, & Author3. (Year). PickShift: A Python Script for Geospatial Analysis Using Monte Carlo Simulations [Computer software]. Repository URL.
-```
+PickShift performs geospatial analysis using Monte Carlo simulations to (1) compute the spatially variable error affecting any historical planimetric data and (2) quantify the surficial uncertainty associated to digitized features.
+The script uses various Python libraries such as `pandas`, `geopandas`, `gdal`, and others for data manipulation, transformation, and spatial analysis.
 
-**MLA Style**
+PickShift consists of three files:
+- environment.xml <br>
+It allows the operator to automatically configure and build an Anaconda environment that suits the appropriate operating system.
+- config.conf <br>
+It contains the location of the required inputs and few parameters that can be modified by the operator.
+- pickshift.py <br>
+It corresponds to the main source code that has to be run once the Anaconda environment is created and the configuration file parameterized.
 
-```text
-Author1, Author2, and Author3. "PickShift: A Python Script for Geospatial Analysis Using Monte Carlo Simulations." Year, Repository URL.
-```
+Here is a link to download those three files:
+[link]
 
-**BibTeX Style**
+### Video tutorial
 
-```bibtex
-@misc{PickShift,
-  title={PickShift: A Python Script for Geospatial Analysis Using Monte Carlo Simulations},
-  author={Author1 and Author2 and Author3},
-  year={Year},
-  url={Repository URL}
-}
-```
+This video explains how to use PickShift. We recommend watching it.
+[link]
 
-## Overview
+### Test data
 
-The `pickshift_main` script performs geospatial analysis using Monte Carlo simulations to evaluate and quantify spatial errors. The script uses various Python libraries such as `pandas`, `geopandas`, `gdal`, and others for data manipulation, transformation, and spatial analysis.
+Here is a link to download the data presented in our article:
+[link]
 
-## Dependencies
+## Installation
 
-### Manual Installation
+We recommend using Anaconda to run PickShift, as it allows to automatically configure and build an Anaconda environment that suits the appropriate operating system. 
+Please refer to the official instructions to install it, depending on your operating system: https://docs.anaconda.com/free/anaconda/install/index.html
 
-To run this script, you'll need the following Python packages:
+Once Anaconda is installed on your operating system and the Anaconda environement created, you will be able to run PickShift from the terminal (for Linux/macOS) or the Anaconda prompt (for Windows).
 
-- pandas
-- geopandas
-- numpy
-- fiona
-- osgeo
-- shapely
-- rasterstats
-- os
-- argparse
-- configparser
-- time
-- tqdm
+### Create PickShift environment
 
-You can install these dependencies using pip:
+Set up the PickShift environment with the provided `environment.yml` file. 
+Run the following command to create the PickShift environment:
 
-```bash
-pip install pandas geopandas numpy fiona osgeo shapely rasterstats argparse configparser tqdm
-```
+`conda env create -f environment.yml`
 
-### Using Anaconda Environment
+Run the following command to activate the PickShift environment:
 
-Alternatively, you can set up the environment using Anaconda with the provided `environment.yml` file. Run the following command to create a new environment:
+`conda activate envpickshift`
 
-```bash
-conda env create -f environment.yml
-```
+## Run PickShift
 
-To activate the environment, use:
+Once the PickShift environment is created and activated, you can run PickShift using the following command:
 
-```bash
-conda activate <env_name>
-```
+`python pickshift.py -c config.conf`
 
-Replace `<env_name>` with the name of the environment specified in `environment.yml`.
+NB: The required inputs must have been prepared and the configuration file (config.conf) parameterized before running PickShift. See sections below.
+
+
+
+## Inputs required
+
+PickShift requires three inputs that have be to prepared by the operator using any GIS software (e.g. QGIS, ArcGIS): 
+ - a shapefile of the spatial extent of the studied area (extent, geopackage format); 
+ - a shapefile of the features digitized from the historical planimetric data (polygons, geopackage format); 
+ - a set of independent ground control points (GCP, txt format).
+
+The input files must share the same projected coordinates system.
+
+| File name | File format | Description/Recommendations|
+|-----------|-------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| GCP       | .txt        | Contains the coordinates (XY) of each pair of Ground Control Points, picked from the targeted and the reference planimetric data. The coordinates can be in any projected coordinate system, in meters. The file must be tab-separated and contain only the following fields: ‘Xref’, ‘Yref’, ‘’Xinit’, ‘Yinit’. |
+| polygons  | .gpkg       | Corresponds to the features of interests digitized from the targeted planimetric data. The file must include the two following fields: <br>- ‘id’ (the automatic QGIS ‘fid’ field is not enough) <br>- type<br>                           |
+| extent    | .gpkg       | Corresponds to the spatial extent of the studied area, where the spatially-variable error is interpolated. We suggest to delineate it a bit larger than the area covered by the polygons.                                                                                                                        |
+
 
 ## Configuration File
 
-The script requires a configuration file (config.conf) for its parameters. Here's a sample configuration file:
+The script requires a configuration file (config.conf) for its parameters. Here's a screenshot of the configuration file:
 
-```ini
-[DEFAULT]
-GCP_txt = path/to/GCP.txt
-extent_txt = path/to/extent.txt
-poly_A_multi_txt = path/to/poly_A_multi.txt
-buffer_txt = 10
-crs_txt = 2154
-runs_txt = 100
-resol_x_txt = 4
-resol_y_txt = 4
-outputf_txt = path/to/output/folder/
-```
+![](config_file.png)
 
-## How to Run
+The following table describes how to fill it. 
 
-1. Ensure that you have all the required dependencies installed.
-2. Place your configuration file in a location accessible by the script.
-3. Run the script via the command line as follows:
+| Parameter name      | Type      | Units  | Description                                                                              | Comments/Recommendations |
+|---------------------|-----------|--------|------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| GCP                 | character | /      | Location of the GCP file.                                                                | /                                                                               |
+| extent              | character | /      | Location of the extent file.                                                             | /                                                                               |
+| polygons            | character | /      | Location of the polygons file.                                                           | /                                                                               |
+| crs                 | integer   | /      | Projected coordinate system of the input files.                                          | EPSG format. Must be the same for all input files.                              |
+| resol_x             | integer   | meters | X resolution of the SVE raster.                                                          | Use the same resolution as the targeted data resolution.                        |
+| resol_y             | integer   | meters | Y resolution of the SVE raster.                                                          | Use the same resolution as the targeted data resolution.                        |
+| buffer              | integer   | meters | Radius of the buffer used to extract the SVE around each vertices.                       | Ten times the resolution of the targeted data.                                  |
+| runs                | integer   | /      | Number of Monte-Carlos simulations.                                                      | 1000 simulations is the right number, but we suggest to first test with 10.     |
+| digit_error         | integer   | meters | Digitization error.                                                                      | Minimum the same value as the targeted data resolution.                         |
+| douglas_peucker     | boolean   | /      | 'True’ : to simplify the polygons after reconstruction.'False’ : without simplification. | Use only if the Monte-Carlo simulations induces topological errors.             |
+| tolerance           | integer   | meters | Tolerance value used to simplify the polygons. For more details, refer to the [geopandas documentation.](https://shapely.readthedocs.io/en/latest/manual.html#object.simplify)                   | We recommend to visually inspect the results and adjust the value if necessary. |
+| outputf             | character | /      | Name of the output folder.                                                               | It is created if it doesn’t exist.                                              |
+| outputGCPb          | boolean   | /      | Exports the punctual biases. ‘True’ or ‘False’                                           | /                                                                               |
+| outputCSV_point_sim | boolean   | /      | Exports the translated vertices. ‘True’ or ‘False’                                       | This file may be large.                                                         |
+| outputCSV_poly_sim  | boolean   | /      | Exports the reconstructed polygons. ‘True’ or ‘False’                                    | This file may be large.                                                         |
+| output_SVE          | boolean   | /      | Exports the interpolated SVE rasters. ‘True’ or ‘False’                                  | This file may be large.                                                         |
 
-```bash
-python script_name.py -c path/to/config.ini
-```
 
-Replace `script_name.py` with the name of this script file and `path/to/config.ini` with the path to your configuration file.
 
-## Functions
 
-### `validate_config(config)`
+## Outputs description
 
-Validates the configuration parameters. It checks whether the files exist and if the folder for output exists or not.
+The following table lists the differents output files PickShift exports.
 
-### `pickshift_main(config_file)`
-
-The main function that performs all the tasks including:
-
-- Reading the configuration
-- Reading and preprocessing input files
-- Spatial transformations
-- Monte Carlo simulations
-- Writing the results to output files
-
-## Output
-
-The script generates various output files:
-
-1. Interpolated rasters of spatial errors.
-2. Geopackages containing polygons with simulated Monte Carlo surface areas.
-3. CSV files containing simulated points and polygons.
-
-All output files are stored in the output folder specified in the configuration file.
-
-## Performance Metrics
-
-The script outputs statistics such as mean and standard deviation for different types of errors, both at the point and polygon level.
-
-## Execution Time
-
-The script prints the total running time at the end of the execution.
-
-## Note
-
-The code is quite extensive and performs multiple operations. Make sure to validate your input files and configurations before running it.
+| File name    | File format | Description |
+|--------------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| GCP_bias     | .gpkg       | Corresponds to the GCPs picked from the targeted planimetric data, to which the punctual planimetric bias values are joined.                                                                                                           |
+| SVE_XY       | .tif        | Spatially-variable error in XY, i.e. spatial interpolation (IDW) of the punctual planimetric biases.                                                                                                                                   |
+| SVE_X        | .tif        | Spatially-variable error in X, i.e. spatial interpolation (IDW) of the punctual planimetric biases.                                                                                                                                    |
+| SVE_Y        | .tif        | Spatially-variable error in Y, i.e. spatial interpolation (IDW) of the punctual planimetric biases.                                                                                                                                    |
+| Buffer       | .gpkg       | Shapefile of the buffers from which the values of SVE are extracted around each polygons vertices.                                                                                                                                     |
+| point_sim_MC | .csv        | Translated vertices resulting from the Monte-Carlo simulations.                                                                                                                                                                        |
+| poly_sim_MC  | .csv        | Reconstructed polygons from the translated vertices.                                                                                                                                                                                   |
+| poly_MC      | .gpkg       | Aggregated results. Contains the initial polygons geometry, associated with the following statistics: mean surface, standard deviation, minimum, percentiles, maximum, total uncertainty (%), confidence interval, 95% uncertainty (%) |
