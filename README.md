@@ -23,7 +23,7 @@ Here is a link to download those three files:
 ### Video tutorial
 
 This video explains how to use PickShift. We recommend watching it.
-[link]
+[![Watch the video](images/video_pickshift.png)](https://podv2.unistra.fr/video/53361-pickshift-tutorial/?is_iframe=true)
 
 ### Test data
 
