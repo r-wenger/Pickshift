@@ -28,7 +28,7 @@ This video explains how to use PickShift. We recommend watching it.
 ### Test data
 
 Here is a link to download the data presented in our article:
-[link]
+[Download test data](https://seafile.unistra.fr/d/a6a19d553ff24ee7859e/)
 
 ## Installation
 
