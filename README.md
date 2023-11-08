@@ -39,10 +39,10 @@ Once Anaconda is installed on your operating system and the Anaconda environemen
 
 ### Create PickShift environment
 
-Set up the PickShift environment with the provided `environment.yml` file. 
+Set up the PickShift environment with the provided `environment_{linux|windows}.yml` file. Use the one who corresponds to you operating system. 
 Run the following command to create the PickShift environment:
 
-`conda env create -f environment.yml`
+`conda env create -f environment_{linux|windows}.yml`
 
 Run the following command to activate the PickShift environment:
 
