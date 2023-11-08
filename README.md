@@ -78,7 +78,7 @@ The input files must share the same projected coordinates system.
 
 The script requires a configuration file (config.conf) for its parameters. Here's a screenshot of the configuration file:
 
-![](config_file.png)
+![Config file](images/config_file.png)
 
 The following table describes how to fill it. 
 
