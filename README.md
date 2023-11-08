@@ -10,7 +10,7 @@ PickShift performs geospatial analysis using Monte Carlo simulations to (1) comp
 The script uses various Python libraries such as `pandas`, `geopandas`, `gdal`, and others for data manipulation, transformation, and spatial analysis.
 
 PickShift consists of three files:
-- environment.xml <br>
+- environment_{linux|windows}.yml <br>
 It allows the operator to automatically configure and build an Anaconda environment that suits the appropriate operating system.
 - config.conf <br>
 It contains the location of the required inputs and few parameters that can be modified by the operator.
