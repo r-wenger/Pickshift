@@ -21,6 +21,7 @@ import random
 from random import *
 from tqdm import tqdm
 import math
+import sys
 
 import argparse
 import configparser
@@ -51,6 +52,9 @@ def validate_config(config):
         int(config.get('DEFAULT', 'runs'))
         float(config.get('DEFAULT', 'resol_x'))
         float(config.get('DEFAULT', 'resol_y'))
+        float(config.get('DEFAULT', 'digit_error'))
+        str(config.get('DEFAULT', 'douglas_peucker'))
+        float(config.get('DEFAULT', 'tolerance'))
         str(config.get('DEFAULT', 'outputCSV_point_sim'))
         str(config.get('DEFAULT', 'outputCSV_poly_sim'))
         str(config.get('DEFAULT', 'outputSVE'))
@@ -75,6 +79,9 @@ def pickshift_main(config_file):
   runs_txt = config.get('DEFAULT', 'runs')
   resol_x_txt = config.get('DEFAULT', 'resol_x')
   resol_y_txt = config.get('DEFAULT', 'resol_y')
+  digit_error = config.get('DEFAULT', 'digit_error')
+  douglas_peucker = config.get('DEFAULT', 'douglas_peucker')
+  tolerance = config.get('DEFAULT', 'tolerance')
   outputf_txt = config.get('DEFAULT', 'outputf')
   outputCSV_point_sim = config.get('DEFAULT', 'outputCSV_point_sim')
   outputCSV_poly_sim = config.get('DEFAULT', 'outputCSV_poly_sim')
@@ -89,6 +96,9 @@ def pickshift_main(config_file):
   buffer=float(buffer_txt)
   crs=int(crs_txt)
   runs=int(runs_txt)
+  digit_error = float(digit_error)
+  douglas_peucker = str(douglas_peucker)
+  tolerance = float(tolerance)
   resol_x=float(resol_x_txt)
   resol_y=float(resol_y_txt)
 
@@ -112,6 +122,11 @@ def pickshift_main(config_file):
   else:
     outputGCPb = False
 
+  if douglas_peucker == 'True':
+    douglas_peucker = True
+  else:
+    douglas_peucker = False
+
   #Starting time
   start = monotonic() 
 
@@ -127,26 +142,26 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Calculating Biases
+  #Calculating planimetric biases
   print("[INFO] Calculating planimetric biases from GCP file...")
-  GCP_biaisXY= abs(((X_ref-X_ini)**2 + (Y_ref-Y_ini)**2)**0.5)
-  GCP_biaisX= abs(X_ref-X_ini)
-  GCP_biaisY= abs(Y_ref-Y_ini)
-  GCP_df.insert(4, "BiaisXY", GCP_biaisXY, allow_duplicates=False)
-  GCP_df.insert(5, "BiaisX", GCP_biaisX, allow_duplicates=False)
-  GCP_df.insert(6, "BiaisY", GCP_biaisY, allow_duplicates=False)
+  GCP_biasXY= abs(((X_ref-X_ini)**2 + (Y_ref-Y_ini)**2)**0.5)
+  GCP_biasX= abs(X_ref-X_ini)
+  GCP_biasY= abs(Y_ref-Y_ini)
+  GCP_df.insert(4, "BiasXY", GCP_biasXY, allow_duplicates=False)
+  GCP_df.insert(5, "BiasX", GCP_biasX, allow_duplicates=False)
+  GCP_df.insert(6, "BiasY", GCP_biasY, allow_duplicates=False)
 
 
   # In[ ]:
 
 
   #Calculating biases and standard deviation
-  mean_XY = GCP_df['BiaisXY'].mean()
-  std_XY= GCP_df['BiaisXY'].std()
-  mean_X = GCP_df['BiaisX'].mean()
-  std_X= GCP_df['BiaisX'].std()
-  mean_Y = GCP_df['BiaisY'].mean()
-  std_Y= GCP_df['BiaisY'].std()
+  mean_XY = GCP_df['BiasXY'].mean()
+  std_XY= GCP_df['BiasXY'].std()
+  mean_X = GCP_df['BiasX'].mean()
+  std_X= GCP_df['BiasX'].std()
+  mean_Y = GCP_df['BiasY'].mean()
+  std_Y= GCP_df['BiasY'].std()
   print("[INFO] XY : mean planimetric bias = ",mean_XY, "std =", std_XY )
   print("[INFO] X  : mean planimetric bias = ",mean_X, "std =", std_X )
   print("[INFO] Y  : mean planimetric bias = ",mean_Y, "std =", std_Y )
@@ -181,25 +196,25 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Interpolate biase
-  print("[INFO] Interpolating biaises over the extent to produce SVE map...")
-  idwXY = gdal.Grid(os.path.join(outputf_txt, "IDW_XY.tif"), os.path.join(outputf_txt, "GCP_bias.gpkg"),zfield="BiaisXY",
+  #Interpolate biases
+  print("[INFO] Interpolating biases over the extent to produce SVE map...")
+  idwXY = gdal.Grid(os.path.join(outputf_txt, "SVE_XY.tif"), os.path.join(outputf_txt, "GCP_bias.gpkg"),zfield="BiasXY",
                   algorithm = "invdist:power=2:smoothing=1.0",
                   outputBounds = [xmin,ymax,xmax,ymin],
                   width=lg,height=ht)
-  print("[OUTPUT] IDW_XY.tif file created.")
+  print("[OUTPUT] SVE_XY.tif file created.")
   idwXY=None
-  idwX = gdal.Grid(os.path.join(outputf_txt, "IDW_X.tif"), os.path.join(outputf_txt, "GCP_bias.gpkg"),zfield="BiaisX",
+  idwX = gdal.Grid(os.path.join(outputf_txt, "SVE_X.tif"), os.path.join(outputf_txt, "GCP_bias.gpkg"),zfield="BiasX",
                   algorithm = "invdist:power=2:smoothing=1.0",
                   outputBounds = [xmin,ymax,xmax,ymin],              
                   width=lg,height=ht)
-  print("[OUTPUT] IDW_X.tif file created.")
+  print("[OUTPUT] SVE_X.tif file created.")
   idwX=None
-  idwY = gdal.Grid(os.path.join(outputf_txt, "IDW_Y.tif"), os.path.join(outputf_txt, "GCP_bias.gpkg"),zfield="BiaisY",
+  idwY = gdal.Grid(os.path.join(outputf_txt, "SVE_Y.tif"), os.path.join(outputf_txt, "GCP_bias.gpkg"),zfield="BiasY",
                   algorithm = "invdist:power=2:smoothing=1.0",
                   outputBounds = [xmin,ymax,xmax,ymin],
                   width=lg,height=ht)
-  print("[OUTPUT] IDW_Y.tif file created.")
+  print("[OUTPUT] SVE_Y.tif file created.")
   idwY=None
 
 
@@ -207,23 +222,52 @@ def pickshift_main(config_file):
 
 
   #Export rasters
-  ESV_data_XY = rasterio.open(os.path.join(outputf_txt, 'IDW_XY.tif')).read(1, masked=True)
-  ESV_data_X = rasterio.open(os.path.join(outputf_txt, 'IDW_X.tif')).read(1, masked=True)
-  ESV_data_Y = rasterio.open(os.path.join(outputf_txt, 'IDW_Y.tif')).read(1, masked=True)
+  ESV_data_XY = rasterio.open(os.path.join(outputf_txt, 'SVE_XY.tif')).read(1, masked=True)
+  ESV_data_X = rasterio.open(os.path.join(outputf_txt, 'SVE_X.tif')).read(1, masked=True)
+  ESV_data_Y = rasterio.open(os.path.join(outputf_txt, 'SVE_Y.tif')).read(1, masked=True)
 
-  ESV_data_XY_transform = rasterio.open(os.path.join(outputf_txt, 'IDW_XY.tif')).transform
-  ESV_data_X_transform = rasterio.open(os.path.join(outputf_txt, 'IDW_X.tif')).transform
-  ESV_data_Y_transform = rasterio.open(os.path.join(outputf_txt, 'IDW_Y.tif')).transform
+  ESV_data_XY_transform = rasterio.open(os.path.join(outputf_txt, 'SVE_XY.tif')).transform
+  ESV_data_X_transform = rasterio.open(os.path.join(outputf_txt, 'SVE_X.tif')).transform
+  ESV_data_Y_transform = rasterio.open(os.path.join(outputf_txt, 'SVE_Y.tif')).transform
 
   # In[ ]:
-
-
-  #Converting to polygons
+  
+  
+    #Converting to polygons
   poly_A= poly_A_multi.explode(index_parts=True)
-  #poly_A= poly_A_multi.explode()
+  
+
+#Pixel mean for SVE XY
+  mean_pixel_error = np.mean(ESV_data_XY)
+
+  average_distances_per_polygon = []
+
+  for _, poly in poly_A.iterrows():
+      nodes_of_poly = [Point(pt) for pt in np.asarray(poly['geometry'].exterior.coords)]
+      
+      distances = []
+      for i in range(1, len(nodes_of_poly)):
+          dist = nodes_of_poly[i-1].distance(nodes_of_poly[i])
+          distances.append(dist)
+      average_distances_per_polygon.append(np.mean(distances))
+
+  final_average_distance = np.mean(average_distances_per_polygon)
+
+  #Calculating the ratio
+  ratio = mean_pixel_error / final_average_distance
+  
+  print('[INFO] The ratio between mean SVE and mean nodes distance is ' + str(ratio))
+  #If the ratio is higher or equal to one and Douglas-Peucker set to 'False'
+  if (ratio >= 1) and (douglas_peucker == False):
+    response = str(input('[WARNING] Monte-Carlo simulations will probably result in topological errors. Do you still want to continue without Douglas-Peucker simplification? (y/n)'))
+
+    if response != 'y':
+      print('[INFO] Shutting down. We suggest using Douglas-Peucker with a tolerance of ' + str(int(final_average_distance*2)) + ". Increase this value if needed. Please edit the configuration file (config.conf).")
+      sys.exit()
 
 
-  # In[ ]:
+
+# In[ ]:
 
 
   #Summit extraction
@@ -231,25 +275,25 @@ def pickshift_main(config_file):
   nodes = gpd.GeoDataFrame(columns=col)
   total_rows = len(poly_A)
 
-  for index, row in tqdm(poly_A.iterrows(), total=poly_A.shape[0], desc="[INFO] Assignment of mean and std error to each polygon nodes according to the buffer size..."):
+  print("[INFO] Assignment of mean and std error to each polygon nodes according to the buffer size...")
+  for index, row in tqdm(poly_A.iterrows(), total=poly_A.shape[0], desc=""):
     for pt in np.asarray(row['geometry'].exterior.coords):
       nodes = pd.concat([nodes, gpd.GeoDataFrame({'id': [int(row['id'])], 'geometry': [Point(pt)]})], ignore_index=True)
 
   nodes.set_geometry('geometry')
 
+  
 
   # In[ ]:
 
   nodes.drop_duplicates(keep='first',inplace=True)
-
 
   # In[ ]:
 
   schema = {
     'geometry': 'Polygon',
     'properties': {
-        'id': 'str',
-        'type': 'str'
+        'id': 'str'
     }
   }
   #crs_fiona = crs.from_epsg(crs)
@@ -262,6 +306,7 @@ def pickshift_main(config_file):
   
   pts_to_poly['id'] = pts_to_poly['id'].astype(int)
   pts_to_poly['type'] = pts_to_poly['type'].astype(str)
+  pts_to_poly = pts_to_poly.drop(columns=['type'])
 
   output_path = os.path.join(outputf_txt, "Buffer.gpkg")
   pts_to_poly.to_file(output_path, crs=crs, schema=schema, driver="GPKG")
@@ -270,7 +315,7 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Extracting ESV in X and convert it into grodataframe
+  #Extracting SVE in X and convert it into geodataframe
   ESV_X = rs.zonal_stats(output_path,
                          ESV_data_X,
                          nodata=-999,
@@ -279,7 +324,6 @@ def pickshift_main(config_file):
                          copy_properties=True,
                          stats="mean std")
 
-  #Conversion en geodataframe de X
   ESV_dfX = gpd.GeoDataFrame.from_features(ESV_X)
   ESV_dfX=ESV_dfX.rename(columns={'mean':'Xmean','std':'Xstd'})
 
@@ -287,7 +331,7 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Extracting ESV in Y and convert it into grodataframe
+  #Extracting SVE in Y and convert it into grodataframe
   ESV_Y = rs.zonal_stats(ESV_dfX,
                          ESV_data_Y,
                          nodata=-999,
@@ -302,7 +346,7 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Extracting ESV in XY and convert it into grodataframe
+  #Extracting SVE in XY and convert it into grodataframe
   ESV_XY = rs.zonal_stats(ESV_dfY,
                          ESV_data_XY,
                          nodata=-999,
@@ -317,7 +361,7 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Converting into points
+  #Convert into points
   ESV_XYXY=ESV_dfXY.copy()
   ESV_XYXY['geometry']=ESV_XYXY['geometry'].centroid
 
@@ -325,49 +369,72 @@ def pickshift_main(config_file):
   # In[ ]:
 
 
-  #Monte Carlo
+
   meanX = ESV_XYXY.Xmean
   stdX = ESV_XYXY.Xstd
   meanY = ESV_XYXY.Ymean
   stdY = ESV_XYXY.Ystd
-  meanXY=ESV_XYXY.XYmean
+  meanXY = ESV_XYXY.XYmean
   stdXY = ESV_XYXY.XYstd
-  id=ESV_XYXY.id
+  id = ESV_XYXY.id
   num_reps = len(ESV_XYXY)
-  X0=ESV_XYXY.geometry.x
-  Y0=ESV_XYXY.geometry.y
-  erreur = 0.5
-  prob=[-1,1]
-  res_dfi=[]
+  X0 = ESV_XYXY.geometry.x
+  Y0 = ESV_XYXY.geometry.y
+  erreur = digit_error
+  prob = [-1, 1]
+  res_dfi = []
+
+  # Create dictionaries to store betax1 and betay1 values for each polygon
+  dict_betax1 = {}
+  dict_betay1 = {}
 
   for i in tqdm(range(runs), desc="[INFO] Monte Carlo translations"):
-    Xgaus= np.random.normal(meanX, stdX, num_reps)
-    Ygaus= np.random.normal(meanY, stdY, num_reps)
-    XYgaus=np.random.normal(meanXY, stdXY, num_reps)
-    direction=np.random.choice(prob, size=1, replace=True, p=[0.5,0.5])
-    df = pd.DataFrame(index=range(num_reps), data={ 'id':id,
-                                                    'X':X0,
-                                                    'Y':Y0,
-                                                    'Xgaus': Xgaus,
-                                                    'Ygaus': Ygaus,
-                                                    'XYgaus': XYgaus,
-                                                    'Sens':direction,
-                                                    'Erreur':0.5})
-    df['X1'] = df['X']+df['Xgaus'] * df['Sens']+(df['Erreur']*df['Sens'])
-    df['Y1'] = df['Y']+df['Ygaus']+(df['Erreur']*df['Sens'])
-    for j in range(0,num_reps):
-      res_dfi.append([i,df['id'][j],df['Xgaus'][j],df['Ygaus'][j],df['XYgaus'][j],df['X1'][j],df['Y1'][j]])
+      Xgaus = np.random.normal(meanX, stdX, num_reps)
+      Ygaus = np.random.normal(meanY, stdY, num_reps)
+      XYgaus = np.random.normal(meanXY, stdXY, num_reps)
+
+      df = pd.DataFrame(index=range(num_reps), data={'id': id,
+                                                     'X': X0,
+                                                     'Y': Y0,
+                                                     'Xgaus': Xgaus,
+                                                     'Ygaus': Ygaus,
+                                                     'XYgaus': XYgaus,
+                                                     'Error': erreur})
+
+      for unique_id in df['id'].unique():
+          # betax1 identical for all nodes in the same polygon
+          betax1 = np.random.choice(prob, size=1, replace=True, p=[0.5, 0.5])[0]
+          dict_betax1[unique_id] = betax1
+
+          # betay1 varies between nodes of the same polygon
+          betay1_values = np.random.choice(prob, size=df[df['id'] == unique_id].shape[0], replace=True, p=[0.5, 0.5]).tolist()
+          dict_betay1[unique_id] = betay1_values
+
+      # Apply betax1 and betay1 values
+      df['Beta1_X'] = df['id'].map(dict_betax1)
+      df['Beta1_Y'] = df['id'].apply(lambda x: dict_betay1[x].pop(0) if dict_betay1[x] else np.nan)
+
+      # betax2 and betay2 are drawn randomly for each node
+      df['Beta2_X'] = np.random.choice(prob, size=num_reps, replace=True, p=[0.5, 0.5])
+      df['Beta2_Y'] = np.random.choice(prob, size=num_reps, replace=True, p=[0.5, 0.5])
+
+      df['X1'] = df['X'] + df['Xgaus'] * df['Beta1_X'] + (df['Error'] * df['Beta2_X'])
+      df['Y1'] = df['Y'] + df['Ygaus'] * df['Beta1_Y'] + (df['Error'] * df['Beta2_Y'])
+
+      for j in range(0, num_reps):
+          res_dfi.append([i, df['id'][j], df['Xgaus'][j], df['Ygaus'][j], df['XYgaus'][j], df['X1'][j], df['Y1'][j]])
 
   results_df = pd.DataFrame.from_records(res_dfi, columns=['run', 'id','ESV_X','ESV_Y','ESV_XY','X','Y'])                                            
   gdf = gpd.GeoDataFrame(results_df, geometry=gpd.points_from_xy(results_df.X, results_df.Y), crs=crs)
 
-
   # In[ ]:
-
 
   #Convert into polygons and surface calculation
   def aggregate_to_polygon(group):
-    return Polygon(group['geometry'].values)
+      if douglas_peucker == True:
+        return Polygon(group['geometry'].values).simplify(tolerance, preserve_topology=False)
+      else:
+        return Polygon(group['geometry'].values)
 
   df2 = gdf.groupby(['run','id']).apply(aggregate_to_polygon).reset_index()
   df2 = df2.rename(columns={0: 'geometry'})
@@ -377,15 +444,14 @@ def pickshift_main(config_file):
                             inplace=True, ignore_index=True)
 
   geodf = gpd.GeoDataFrame(df2, geometry='geometry')
-  geodf['Area']=geodf.area/10000
-
+  geodf['Area']=geodf.area
 
   # In[ ]:
 
   grouppoly=geodf.groupby(["id"])[["Area"]].describe()
   grouppoly.columns = grouppoly.columns.droplevel(0)
   for n in tqdm(range(len(grouppoly)), desc="[INFO] Calculating surface uncertainties for each polygon"):
-    grouppoly['initial area']=list(poly_A.area/10000)
+    grouppoly['initial area']=list(poly_A.area)
     grouppoly['total uncertainty']=((0.5*(grouppoly['max']-grouppoly['min']))/grouppoly['mean'])*100
     q2=np.asarray(geodf.groupby(["id"])[["Area"]].quantile(0.025))
     q9=np.asarray(geodf.groupby(["id"])[["Area"]].quantile(0.975))
@@ -410,28 +476,28 @@ def pickshift_main(config_file):
     if os.path.exists(file):
       os.remove(file)
 
-  #remove geometry column
-  if outputCSV_poly_sim is True:
-    geodf.set_geometry('geometry', inplace=True)
-    #geodf['geometry'] = geodf['geometry'].apply(lambda x: x.wkt)
-    geodf['geometry'] = geodf['geometry'].apply(lambda geom: geom if geom.is_valid else None)
-    geodf.to_csv(os.path.join(outputf_txt, 'poly_sim_MC.csv'), index=False)
-    print("[OUTPUT] poly_sim_MC.csv file created.")
+  with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    #remove geometry column
+    if outputCSV_poly_sim is True:
+      geodf.set_geometry('geometry', inplace=True)
+      geodf.to_csv(os.path.join(outputf_txt, 'poly_sim_MC.csv'), index=False)
+      print("[OUTPUT] poly_sim_MC.csv file created.")
 
-  if outputCSV_point_sim is True:
-    gdf['geometry'] = gdf['geometry'].apply(lambda x: x.wkt if x is not None else None)
-    gdf = gdf.drop(columns=['geometry'])
-    gdf.to_csv(os.path.join(outputf_txt, 'point_sim_MC.csv'), index=False)
-    print("[OUTPUT] point_sim_MC.csv file created.")
+    if outputCSV_point_sim is True:
+      gdf['geometry'] = gdf['geometry'].apply(lambda x: x.wkt if x is not None else None)
+      gdf = gdf.drop(columns=['geometry'])
+      gdf.to_csv(os.path.join(outputf_txt, 'point_sim_MC.csv'), index=False)
+      print("[OUTPUT] point_sim_MC.csv file created.")
 
 
-  if outputIDW is False:
-    os.remove(os.path.join(outputf_txt, 'IDW_XY.tif'))
-    os.remove(os.path.join(outputf_txt, 'IDW_X.tif'))
-    os.remove(os.path.join(outputf_txt, 'IDW_Y.tif'))
+    if outputIDW is False:
+      os.remove(os.path.join(outputf_txt, 'SVE_XY.tif'))
+      os.remove(os.path.join(outputf_txt, 'SVE_X.tif'))
+      os.remove(os.path.join(outputf_txt, 'SVE_Y.tif'))
 
-  if outputGCPb is False:
-    os.remove(os.path.join(outputf_txt, outfp))
+    if outputGCPb is False:
+      os.remove(os.path.join(outputf_txt, outfp))
 
 
 if __name__ == "__main__":
