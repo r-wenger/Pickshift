@@ -17,9 +17,6 @@ It contains the location of the required inputs and few parameters that can be m
 - pickshift.py <br>
 It corresponds to the main source code that has to be run once the Anaconda environment is created and the configuration file parameterized.
 
-Here is a link to download those three files:
-[link]
-
 ### Video tutorial
 
 This video explains how to use PickShift. We recommend watching it.
