@@ -4,6 +4,23 @@
 
 If you use PickShift for academic research or as part of any scientific publication, we ask you to cite it. Below is a sample citation:
 
+> Timothée Jautzy, Pierrick Freys, Valentin Chardon, Romain Wenger, Gilles Rixhon, Laurent Schmitt, Pierre-Alexis Herrault,
+PickShift: A user-friendly Python tool to assess the surficial uncertainties associated with polygons extracted from historical planimetric data, SoftwareX, Volume 27, 2024, 101866, ISSN 2352-7110, https://doi.org/10.1016/j.softx.2024.101866.
+
+```
+@article{JAUTZY2024101866,
+title = {PickShift: A user-friendly Python tool to assess the surficial uncertainties associated with polygons extracted from historical planimetric data},
+journal = {SoftwareX},
+volume = {27},
+pages = {101866},
+year = {2024},
+issn = {2352-7110},
+doi = {https://doi.org/10.1016/j.softx.2024.101866},
+url = {https://www.sciencedirect.com/science/article/pii/S235271102400236X},
+author = {Timothée Jautzy and Pierrick Freys and Valentin Chardon and Romain Wenger and Gilles Rixhon and Laurent Schmitt and Pierre-Alexis Herrault}
+}
+```
+
 ### Overview
 
 PickShift performs geospatial analysis using Monte Carlo simulations to (1) compute the spatially variable error affecting any historical planimetric data and (2) quantify the surficial uncertainty associated to digitized features.
