@@ -1,0 +1,43 @@
+; Metadata for the PickShift QGIS plugin
+[general]
+# Name shown in the plugin manager.  Use only ASCII characters here.
+name=PickShift
+# Short description of what this plugin does.  Keep it concise and use
+# English so the plugin can be published on the official repository.
+description=PickShift: Monte-Carlo estimation of positional and area uncertainty of polygons from GCP planimetric biases.
+# Longer summary displayed under the title in the plugin manager.
+about=Polygons digitized from historical planimetric data (old maps, aerial photographs) inherit the positional inaccuracies of their source, yet this uncertainty is rarely quantified. PickShift runs a Monte-Carlo simulation that propagates the planimetric bias measured at Ground Control Points (GCPs) to estimate the positional and area uncertainty of any polygon layer. The bias is interpolated (IDW) over the study extent to produce an error surface, sampled around each polygon vertex through buffered zonal statistics, then randomly resampled over N simulation runs (with optional Douglas-Peucker simplification) to derive, for every polygon, its total uncertainty and 95% confidence interval on area. This plugin is a pure PyQGIS/GDAL/NumPy port of the original PickShift Python script: it only uses libraries bundled with QGIS (qgis.core/qgis.gui, osgeo.gdal/ogr, numpy) and does not require geopandas, fiona, shapely, rasterio, rasterstats or pandas. Source code is MIT licensed (see LICENSE). See Jautzy et al. (2024), SoftwareX, 27, 101866 for the underlying method.
+# Category under which the plugin is listed in the plugin manager.  See the
+# documentation for available categories (Raster, Vector, Database, etc.).
+category=Vector
+# Version number of your plugin.  Increment this when you publish new releases.
+version=1.0.0
+# Minimum and maximum QGIS versions that the plugin supports.  Adjust as
+# necessary if you test against newer QGIS releases.
+qgisMinimumVersion=3.40
+qgisMaximumVersion=4.99
+# Author information.  Matches the author list of the companion paper.
+author=Timothee Jautzy, Pierrick Freys, Valentin Chardon, Romain Wenger, Gilles Rixhon, Laurent Schmitt, Pierre-Alexis Herrault
+email=romain.wenger@live-cnrs.unistra.fr
+# Optional icon.  Leave blank or provide a relative path to an image placed in
+# your plugin directory.
+icon=icon.svg
+# The plugin exposes a single dialog (Vector menu / toolbar icon), it does not
+# register a Processing provider.
+hasProcessingProvider=no
+; Optional path to HTML help files.  Not provided here.
+; helpPath=
+# Repository, tracker and homepage (required for the official QGIS repository).
+repository=https://github.com/r-wenger/Pickshift
+tracker=https://github.com/r-wenger/Pickshift/issues
+homepage=https://github.com/r-wenger/Pickshift
+# SPDX licence identifier.
+license=GPL-3.0-or-later
+# Tags help users find the plugin in the plugin manager.
+tags=uncertainty,monte carlo,GCP,accuracy,error propagation,vector,raster,interpolation,historical maps
+# Set to True only for pre-releases.
+experimental=False
+deprecated=False
+# Qt6 support: the plugin only uses qgis.PyQt and fully-qualified enums, so it
+# runs unchanged on QGIS built against either Qt5 or Qt6.
+supportsQt6=True
